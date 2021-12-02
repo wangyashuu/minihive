@@ -25,7 +25,6 @@ class TestRuleBreakUpSelections(unittest.TestCase):
         expected_expr = radb.parse.one_statement_from_string(expected)
         self.assertEqual(str(computed_expr), str(expected_expr))
 
-    @unittest.skip("test-drive dev")
     def test_break_selections_select_gender_age_person(self):
         self._check(
             "\\select_{Person.gender = 'f' and Person.age = 16}(Person);",
@@ -33,7 +32,6 @@ class TestRuleBreakUpSelections(unittest.TestCase):
             " Person);",
         )
 
-    @unittest.skip("test-drive dev")
     def test_break_selections_project_select_gender_age_person(self):
         self._check(
             "\\project_{name}(\\select_{gender='f' and age=16}(Person));",
@@ -41,7 +39,6 @@ class TestRuleBreakUpSelections(unittest.TestCase):
             " Person));",
         )
 
-    @unittest.skip("test-drive dev")
     def test_break_selections_select_gender_age_person_cross_eats(self):
         self._check(
             "\\select_{Person.gender='f' and Person.age=16}(Person) \\cross"
@@ -50,7 +47,6 @@ class TestRuleBreakUpSelections(unittest.TestCase):
             " Person) \\cross Eats;",
         )
 
-    @unittest.skip("test-drive dev")
     def test_break_selections_select_gender_age_person_cross_eats_flipped(
         self,
     ):
@@ -61,7 +57,6 @@ class TestRuleBreakUpSelections(unittest.TestCase):
             " = 16} Person);",
         )
 
-    @unittest.skip("test-drive dev")
     def test_select_rename_eats(self):
         self._check(
             "\\select_{E.pizza = 'mushroom' and E.price < 10} \\rename_{E:"
