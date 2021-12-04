@@ -72,7 +72,6 @@ Assumes that conjunctions in selections have been broken up.
 """
 
 
-@unittest.skip("test-drive dev")
 class TestRulePushDownSelections(unittest.TestCase):
     def _check(self, input, expected):
         # The data dictionary records the relational schema.
@@ -156,12 +155,20 @@ class TestRulePushDownSelections(unittest.TestCase):
             "((Person \\cross Eats) \\cross \\select_{price < 10}(Serves));",
         )
 
+    def test_select2_3cross(self):
+        self._check(
+            "\\select_{Person.name = Eats.name} ((Person \\cross Eats) \\cross"
+            " Serves);",
+            "(\\select_{Person.name = Eats.name} (Person \\cross Eats))"
+            " \\cross Serves;",
+        )
+
     def test_select_select_3cross(self):
         self._check(
-            """\\select_{Eats.pizza = Serves.pizza} \\select_{Person.name = Eats.name}
-                       ((Person \\cross Eats) \\cross Serves);""",
-            """\\select_{Eats.pizza = Serves.pizza}( \\select_{Person.name = Eats.name}
-                       (Person \\cross Eats) \\cross Serves );""",
+            "\\select_{Eats.pizza = Serves.pizza} \\select_{Person.name ="
+            " Eats.name} ((Person \\cross Eats) \\cross Serves);",
+            "\\select_{Eats.pizza = Serves.pizza} (\\select_{Person.name ="
+            " Eats.name} (Person \\cross Eats) \\cross Serves );",
         )
 
     def test_select_rename_eats(self):
@@ -169,6 +176,7 @@ class TestRulePushDownSelections(unittest.TestCase):
             "\\select_{pizza = 'mushroom'} \\rename_{E: *}(Eats);",
             "\\select_{pizza = 'mushroom'} \\rename_{E: *}(Eats);",
         )
+
 
     def test_select_rename_eats_prefix_notation(self):
         self._check(
