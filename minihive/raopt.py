@@ -1,4 +1,13 @@
-from radb.ast import Cross, Project, Rename, Join, RelRef, Select, AttrRef
+from radb.ast import (
+    Cross,
+    Project,
+    Rename,
+    Join,
+    RelRef,
+    Select,
+    AttrRef,
+    ValExprBinaryOp,
+)
 from radb.parse import RAParser as sym
 
 
@@ -123,8 +132,35 @@ def get_rels(rel):
     return set.union(*rel_list)
 
 
-def rule_merge_selections(ra):
-    pass
+def rule_merge_selections(rel):
+    t = type(rel)
+    if t == Cross:
+        left, right = rel.inputs
+        left = rule_merge_selections(left)
+        right = rule_merge_selections(right)
+        return Cross(left, right)
+    elif t == Project:
+        target_rel = rule_merge_selections(rel.inputs[0])
+        return Project(rel.attrs, target_rel)
+    elif t == Rename:
+        target_rel = rule_merge_selections(rel.inputs[0])
+        return Rename(rel.relname, rel.attrnames, target_rel)
+    elif t == Join:
+        left, right = rel.inputs
+        left = rule_merge_selections(left)
+        right = rule_merge_selections(right)
+        return Join(left, rel.cond, right)
+    elif t == RelRef:
+        return rel
+    elif t == Select:
+        # TODO: Test select in select
+        cond = rel.cond
+        target = rel.inputs[0]
+        while type(target) == Select:
+            cond = ValExprBinaryOp(cond, sym.AND, target.cond)
+            target = target.inputs[0]
+        target = rule_merge_selections(target)
+        return Select(cond, target)
 
 
 def rule_introduce_joins(ra):

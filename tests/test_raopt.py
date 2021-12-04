@@ -177,7 +177,6 @@ class TestRulePushDownSelections(unittest.TestCase):
             "\\select_{pizza = 'mushroom'} \\rename_{E: *}(Eats);",
         )
 
-
     def test_select_rename_eats_prefix_notation(self):
         self._check(
             "\\select_{E.pizza = 'mushroom'} \\rename_{E: *}(Eats);",
@@ -218,7 +217,6 @@ Tests that nested selections are properly merged.
 """
 
 
-@unittest.skip("test-drive dev")
 class TestMergeSelections(unittest.TestCase):
     def _check(self, input, expected):
         computed_expr = raopt.rule_merge_selections(
@@ -284,12 +282,14 @@ class TestIntroduceJoins(unittest.TestCase):
             "\\project_{name} \\select_{'f' = gender} Person;",
         )
 
+    @unittest.skip("test-drive dev")
     def test_select_person_cross_eats(self):
         self._check(
             "\\select_{Person.name = Eats.name} (Person \\cross Eats);",
             "Person \\join_{Person.name = Eats.name} Eats;",
         )
 
+    @unittest.skip("test-drive dev")
     def test_select_select_person_cross_eats(self):
         self._check(
             "\\select_{Person.name = Eats.name} (\\select_{Person.name ="
@@ -298,6 +298,7 @@ class TestIntroduceJoins(unittest.TestCase):
             " Eats.name} Eats;",
         )
 
+    @unittest.skip("test-drive dev")
     def test_select_person_cross_select_eats(self):
         self._check(
             "\\select_{Person.name = Eats.name} (Person \\cross"
@@ -306,6 +307,7 @@ class TestIntroduceJoins(unittest.TestCase):
             " 'Amy'} Eats;",
         )
 
+    @unittest.skip("test-drive dev")
     def test_select_person_cross_eats_with_rename(self):
         self._check(
             "\\select_{P.name = Eats.name} ((\\rename_{P: *} Person) \\cross"
@@ -313,14 +315,16 @@ class TestIntroduceJoins(unittest.TestCase):
             "(\\rename_{P: *} Person) \\join_{P.name = Eats.name} Eats;",
         )
 
+    @unittest.skip("test-drive dev")
     def test_2_cross(self):
         self._check(
-            """\\select_{Eats.pizza = Serves.pizza}((\\select_{Person.name = Eats.name}
-                       (Person \\cross Eats)) \\cross Serves);""",
-            """(Person \\join_{Person.name = Eats.name} Eats) \\join_{Eats.pizza =
-                       Serves.pizza} Serves;""",
+            "\\select_{Eats.pizza = Serves.pizza}((\\select_{Person.name ="
+            " Eats.name} (Person \\cross Eats)) \\cross Serves);",
+            "(Person \\join_{Person.name = Eats.name} Eats) \\join_{Eats.pizza"
+            " = Serves.pizza} Serves;",
         )
 
+    @unittest.skip("test-drive dev")
     def test_2_join_conds(self):
         self._check(
             "\\select_{Person.name = Eats.name and Person.name = Eats.pizza}"
