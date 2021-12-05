@@ -112,11 +112,15 @@ def push_down_selections(rel, cond, schema):
         rels = get_rels(rel)
         if attr_rels == rels:
             return None, Select(cond, rel)
-        elif attr_rels < rels:
+        elif len(attr_rels) < len(rels):
             cond, potential = push_down_selections(rel.inputs[0], cond, schema)
             if cond is None:
                 return None, Select(rel.cond, potential)
     return cond, rel
+
+
+def get_attr_rel_for_eq(cond):
+    return set([i.rel for i in cond.inputs if type(i) == AttrRef])
 
 
 def get_attr_rels(cond, schema):
@@ -163,5 +167,94 @@ def rule_merge_selections(rel):
         return Select(cond, target)
 
 
-def rule_introduce_joins(ra):
-    pass
+def rule_introduce_joins(rel):
+    t = type(rel)
+    if t == Cross:
+        left, right = rel.inputs
+        left = rule_introduce_joins(left)
+        right = rule_introduce_joins(right)
+        return Cross(left, right)
+    elif t == Project:
+        target_rel = rule_introduce_joins(rel.inputs[0])
+        return Project(rel.attrs, target_rel)
+    elif t == Rename:
+        target_rel = rule_introduce_joins(rel.inputs[0])
+        return Rename(rel.relname, rel.attrnames, target_rel)
+    elif t == Join:
+        left, right = rel.inputs
+        left = rule_introduce_joins(left)
+        right = rule_introduce_joins(right)
+        return Join(left, rel.cond, right)
+    elif t == RelRef:
+        return rel
+    elif t == Select:
+        # TODO: Test select in select
+
+        rels = get_rels(rel.inputs[0])
+        if len(rels) < 2:
+            return rel
+
+        input_rel = rule_introduce_joins(rel.inputs[0])
+
+        cond = rel.cond
+        conds = []
+        while cond.op is sym.AND:
+            cond, right = cond.inputs
+            conds.append(right)
+        conds.append(cond)
+
+        target_conds, left_conds = [], []
+
+        for c in conds:
+            attr_rels = get_attr_rel_for_eq(c)
+            if len(attr_rels) == 2 and attr_rels <= rels and c.op == sym.EQ:
+                target_conds.append(c)
+            else:
+                left_conds.append(c)
+
+        target_cond = get_conjunctive_cond(target_conds)
+
+        if target_cond is not None:
+            target_cond, input_rel = introduce_join(target_cond, input_rel)
+
+            left_cond = get_conjunctive_cond(left_conds)
+            if left_cond is None:
+                return input_rel
+
+        return Select(rel.cond, input_rel)
+
+
+def get_conjunctive_cond(conds):
+    if len(conds) < 1:
+        return None
+    conds = list(reversed(conds))
+    res = conds[0]
+    for c in conds[1:]:
+        res = ValExprBinaryOp(res, sym.AND, c)
+    return res
+
+
+def introduce_join(cond, rel):
+    t = type(rel)
+    if t == Cross:
+        attr_rels = get_attr_rel_for_eq(cond)
+
+        left_rel, right_rel = rel.inputs
+        left_rels = get_rels(left_rel)
+        right_rels = get_rels(right_rel)
+
+        if attr_rels <= set.union(left_rels, right_rels) and (
+            len(left_rels) == 1 or len(right_rels) == 1
+        ):
+            return None, Join(left_rel, cond, right_rel)
+
+    elif t == Project:
+        cond, target_rel = introduce_join(rel.inputs[0])
+        if cond is None:
+            return None, Project(rel.attrs, target_rel)
+    elif t == Rename:
+        cond, target_rel = introduce_join(rel.inputs[0])
+        if cond is None:
+            return None, Rename(rel.relname, rel.attrnames, target_rel)
+
+    return cond, rel
