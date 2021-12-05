@@ -19,7 +19,6 @@ Tests that selections are broken up correctly.
 """
 
 
-@unittest.skip("test-drive dev")
 class TestRuleBreakUpSelections(unittest.TestCase):
     def _check(self, input, expected):
         computed_expr = raopt.rule_break_up_selections(
@@ -43,7 +42,6 @@ Assumes that conjunctions in selections have been broken up.
 """
 
 
-@unittest.skip("test-drive dev")
 class TestRulePushDownSelections(unittest.TestCase):
     def _check(self, input, expected):
         # The data dictionary records the relational schema.
@@ -85,7 +83,6 @@ Tests that nested selections are properly merged.
 """
 
 
-@unittest.skip("test-drive dev")
 class TestMergeSelections(unittest.TestCase):
     def _check(self, input, expected):
         computed_expr = raopt.rule_merge_selections(
@@ -129,7 +126,6 @@ Assumes that all selections have been pushed down as far as possible.
 """
 
 
-@unittest.skip("test-drive dev")
 class TestIntroduceJoins(unittest.TestCase):
     def _check(self, input, expected):
         computed_expr = raopt.rule_introduce_joins(
@@ -164,7 +160,6 @@ Tests all rules in combination.
 """
 
 
-@unittest.skip("test-drive dev")
 class TestAllSteps(unittest.TestCase):
     def _check(self, input, expected):
         dd = {}
@@ -240,7 +235,6 @@ class TestAllSteps(unittest.TestCase):
         )
 
 
-@unittest.skip("test-drive dev")
 class TestAllStepsDifferentSchema(unittest.TestCase):
     def _check(self, input, expected):
         dd = {}
