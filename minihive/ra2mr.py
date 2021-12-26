@@ -271,11 +271,15 @@ class RenameTask(RelAlgQueryTask):
 
         raquery = radb.parse.one_statement_from_string(self.querystring)
 
-        """ ...................... fill in your code below ........................"""
+        """ .................. fill in your code below ...................."""
+        relname = raquery.relname
+        obj = {
+            key.replace(relation, relname): val
+            for key, val in json_tuple.items()
+        }
+        yield (relname, json.dumps(obj))
 
-        yield ("foo", "bar")
-
-        """ ...................... fill in your code above ........................"""
+        """ .................. fill in your code above ...................."""
 
 
 class ProjectTask(RelAlgQueryTask):

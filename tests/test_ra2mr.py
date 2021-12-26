@@ -307,7 +307,29 @@ def test_select_female_gender_person():
     _check(querystring, expected)
 
 
-@pytest.mark.skip(reason="test dev")
+def test_select_age_21_Person():
+    querystring = "\\select_{age=21}(Person);"
+    result = [person_fay, person_ben]
+    _check(querystring, result)
+
+
+def test_select_price_9_Serves():
+    querystring = "\\select_{price=9}(Serves);"
+    computed = _evaluate(querystring)
+    assert len(computed) == 1
+
+
+def test_select_person_female_age_16():
+    querystring = "\\select_{gender='female' and age=16}(Person);"
+    result = [person_amy]
+    _check(querystring, result)
+
+
+def test_select_person_age_3():
+    querystring = "\\select_{age=3}(Person);"
+    _check(querystring, [])
+
+
 def test_rename_person():
     querystring = "\\rename_{P:*} (Person);"
     computed = _evaluate(querystring)
@@ -322,41 +344,12 @@ def test_rename_person():
             assert k.startswith("P.")
 
 
-@pytest.mark.skip(reason="test dev")
 def test_select_p_gender_female_p():
     querystring = "\\select_{P.gender='female'} \\rename_{P:*} (Person);"
     computed = _evaluate(querystring)
     assert len(computed) == 3
 
 
-@pytest.mark.skip(reason="test dev")
-def test_select_age_21_Person():
-    querystring = "\\select_{age=21}(Person);"
-    result = [person_fay, person_ben]
-    _check(querystring, result)
-
-
-@pytest.mark.skip(reason="test dev")
-def test_select_price_9_Serves():
-    querystring = "\\select_{price=9}(Serves);"
-    computed = _evaluate(querystring)
-    assert len(computed) == 1
-
-
-@pytest.mark.skip(reason="test dev")
-def test_select_person_female_age_16():
-    querystring = "\\select_{gender='female' and age=16}(Person);"
-    result = [person_amy]
-    _check(querystring, result)
-
-
-@pytest.mark.skip(reason="test dev")
-def test_select_person_age_3():
-    querystring = "\\select_{age=3}(Person);"
-    _check(querystring, [])
-
-
-@pytest.mark.skip(reason="test dev")
 def test_select_pizza_mushroom():
     querystring = "\\project_{pizza} \\select_{pizza='mushroom'} Eats;"
     computed = _evaluate(querystring)
