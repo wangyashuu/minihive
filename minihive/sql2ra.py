@@ -53,7 +53,9 @@ def parse_from(token):
         for t in token.get_identifiers():
             current_obj = parse_rel(t)
             where_obj = (
-                current_obj if where_obj is None else Cross(where_obj, current_obj)
+                current_obj
+                if where_obj is None
+                else Cross(where_obj, current_obj)
             )
         return where_obj
     else:
