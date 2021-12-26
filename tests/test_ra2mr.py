@@ -350,13 +350,6 @@ def test_select_p_gender_female_p():
     assert len(computed) == 3
 
 
-def test_select_pizza_mushroom():
-    querystring = "\\project_{pizza} \\select_{pizza='mushroom'} Eats;"
-    computed = _evaluate(querystring)
-    assert len(computed) == 1
-
-
-@pytest.mark.skip(reason="test dev")
 def test_person_join_eats_mushroom():
     querystring = (
         "Person \\join_{Person.name = Eats.name} (\\select_{pizza='mushroom'}"
@@ -368,6 +361,13 @@ def test_person_join_eats_mushroom():
     relation, tuple = computed[0].split("\t")
     json_tuple = json.loads(tuple)
     assert len(json_tuple.keys()) == 5
+
+
+@pytest.mark.skip(reason="test dev")
+def test_select_pizza_mushroom():
+    querystring = "\\project_{pizza} \\select_{pizza='mushroom'} Eats;"
+    computed = _evaluate(querystring)
+    assert len(computed) == 1
 
 
 @pytest.mark.skip(reason="test dev")

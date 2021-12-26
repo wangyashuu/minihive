@@ -211,20 +211,34 @@ class JoinTask(RelAlgQueryTask):
         raquery = radb.parse.one_statement_from_string(self.querystring)
         condition = raquery.cond
 
-        """ ...................... fill in your code below ........................"""
+        """ .................. fill in your code below ...................."""
 
-        yield ("foo", "bar")
+        val = get_cond_target(
+            relation, json_tuple, condition.inputs[0]
+        ) or get_cond_target(relation, json_tuple, condition.inputs[1])
 
-        """ ...................... fill in your code above ........................"""
+        yield (val, json_tuple)
+
+        """ .................. fill in your code above ...................."""
 
     def reducer(self, key, values):
         raquery = radb.parse.one_statement_from_string(self.querystring)
 
-        """ ...................... fill in your code below ........................"""
+        """ ................. fill in your code below ..................."""
+        # diff_attr_tables = { for v in values for key, value in json.dumps(val)}
+        # common_attr = json.dumps(keys)
+        # for attrs in diff_attr_tables:
+        # if len(diff_attr_tables) == 2:
+        value_list = list(values)
+        if len(value_list) == 2:
+            obj = {
+                key: val
+                for v in value_list
+                for key, val in v.items()
+            }
+            yield ("foo", json.dumps(obj))
 
-        yield ("foo", "bar")
-
-        """ ...................... fill in your code above ........................"""
+        """ ................. fill in your code above ..................."""
 
 
 class SelectTask(RelAlgQueryTask):
