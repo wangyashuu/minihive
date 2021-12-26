@@ -12,6 +12,47 @@ import radb.ast
 import radb.parse
 from radb.parse import RAParser as sym
 
+"""
+util function
+"""
+
+
+def decomposite_conjunctive_cond(cond):
+    conds = []
+    while cond.op is sym.AND:
+        cond, right = cond.inputs
+        conds.append(right)
+    conds.append(cond)
+    conds.reverse()
+    return conds
+
+
+def get_cond_target(relation, json, target):
+    if isinstance(target, radb.ast.Literal):  # isinstance
+        return ast.literal_eval(target.val)
+
+    if isinstance(target, radb.ast.AttrRef):
+        if target.rel is None or target.rel == relation:
+            return json[f"{relation}.{target.name}"]
+
+    return None
+
+
+def match_cond(relation, json, cond):
+    left, right = cond.inputs
+    left = get_cond_target(relation, json, left)
+    right = get_cond_target(relation, json, right)
+    comparison_ops = {
+        sym.LT: operator.lt,  # "<"
+        sym.LE: operator.le,  # "<="
+        sym.EQ: operator.eq,  # "="
+        sym.NE: operator.ne,  # "!="
+        sym.GE: operator.ge,  # ">="
+        sym.GT: operator.gt,  # ">"
+    }
+    op = comparison_ops[cond.op]
+    return op(left, right)
+
 
 """
 Control where the input data comes from, and where output data should go.
@@ -204,12 +245,11 @@ class SelectTask(RelAlgQueryTask):
         json_tuple = json.loads(tuple)
 
         condition = radb.parse.one_statement_from_string(self.querystring).cond
-
-        """ ...................... fill in your code below ........................"""
-
-        yield ("foo", "bar")
-
-        """ ...................... fill in your code above ........................"""
+        """ .................. fill in your code below ....................."""
+        conds = decomposite_conjunctive_cond(condition)
+        if all(match_cond(relation, json_tuple, c) for c in conds):
+            yield (relation, tuple)
+        """ .................. fill in your code above ...................."""
 
 
 class RenameTask(RelAlgQueryTask):

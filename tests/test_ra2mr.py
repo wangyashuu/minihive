@@ -289,21 +289,18 @@ def _check(querystring, expected):
         assert item_found
 
 
-@pytest.mark.skip(reason="test dev")
 def test_select_person_gender_female_person():
     querystring = "\\select_{Person.gender='female'}(Person);"
     expected = [person_amy, person_fay, person_hil]
     _check(querystring, expected)
 
 
-@pytest.mark.skip(reason="test dev")
 def test_select_gender_female_person():
     querystring = "\\select_{gender='female'}(Person);"
     expected = [person_amy, person_fay, person_hil]
     _check(querystring, expected)
 
 
-@pytest.mark.skip(reason="test dev")
 def test_select_female_gender_person():
     querystring = "\\select_{'female'=gender}(Person);"
     expected = [person_amy, person_fay, person_hil]
