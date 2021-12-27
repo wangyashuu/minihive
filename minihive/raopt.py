@@ -124,6 +124,7 @@ def push_down_selections(rel, cond, schema):
             )
             if cond is None:
                 return None, Cross(left_rel, potential_right)
+            return None, Select(cond, rel)
         elif attr_rels == rels:
             left_rels = get_rels(left_rel)
             right_rels = get_rels(right_rel)

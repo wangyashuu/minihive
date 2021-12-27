@@ -344,7 +344,7 @@ def test_rename_person():
             assert k.startswith("P.")
 
 
-def test_select_p_gender_female_p():
+def test_select_rename_p_gender_female_p():
     querystring = "\\select_{P.gender='female'} \\rename_{P:*} (Person);"
     computed = _evaluate(querystring)
     assert len(computed) == 3
@@ -363,31 +363,6 @@ def test_person_join_eats_mushroom():
     assert len(json_tuple.keys()) == 5
 
 
-@pytest.mark.skip(reason="test dev")
-def test_select_pizza_mushroom():
-    querystring = "\\project_{pizza} \\select_{pizza='mushroom'} Eats;"
-    computed = _evaluate(querystring)
-    assert len(computed) == 1
-
-
-@pytest.mark.skip(reason="test dev")
-def test_project_Person_gender():
-    querystring = "\\project_{gender} Person;"
-    result = ['{"Person.gender": "female"}', '{"Person.gender": "male"}']
-    _check(querystring, result)
-
-
-@pytest.mark.skip(reason="test dev")
-def test_project_person_join_eats():
-    querystring = (
-        "\\project_{Person.name, Eats.pizza} (Person \\join_{Person.name ="
-        " Eats.name} Eats);"
-    )
-    computed = _evaluate(querystring)
-    assert len(computed) == 20
-
-
-@pytest.mark.skip(reason="test dev")
 def test_female_person_join_eats():
     querystring = (
         "(\\select_{gender='female'} Person) \\join_{Person.name = Eats.name}"
@@ -405,14 +380,12 @@ def test_female_person_join_eats():
         assert json_tuple["Person.gender"] == "female"
 
 
-@pytest.mark.skip(reason="test dev")
 def test_empty_join():
     querystring = "Person \\join_{Person.name = Serves.pizzeria} Serves;"
     computed = _evaluate(querystring)
     assert computed == []
 
 
-@pytest.mark.skip(reason="test dev")
 def test_person_join_eats_then_join_frequents():
     querystring = (
         "(Person \\join_{Person.name = Eats.name} Eats) \\join_{Eats.name ="
@@ -422,7 +395,6 @@ def test_person_join_eats_then_join_frequents():
     assert len(computed) == 42
 
 
-@pytest.mark.skip(reason="test dev")
 def test_eats_join_person_then_join_frequents():
     querystring = (
         "(Eats \\join_{Person.name = Eats.name} Person) \\join_{Eats.name ="
@@ -432,7 +404,6 @@ def test_eats_join_person_then_join_frequents():
     assert len(computed) == 42
 
 
-@pytest.mark.skip(reason="test dev")
 def test_person_then_join_eats_join_frequents():
     querystring = (
         "Person \\join_{Person.name = Eats.name} (Eats \\join_{Eats.name ="
@@ -442,7 +413,6 @@ def test_person_then_join_eats_join_frequents():
     assert len(computed) == 42
 
 
-@pytest.mark.skip(reason="test dev")
 def test_person_join_eats_join_serves():
     querystring = (
         "Person \\join_{Person.name = Eats.name} Eats "
@@ -452,7 +422,6 @@ def test_person_join_eats_join_serves():
     assert len(computed) == 8
 
 
-@pytest.mark.skip(reason="test dev")
 def test_person_join_eats_join_serves_dominos():
     querystring = (
         "(Person \\join_{Person.name = Eats.name} Eats) \\join_{Eats.pizza ="
@@ -462,7 +431,6 @@ def test_person_join_eats_join_serves_dominos():
     assert len(computed) == 9
 
 
-@pytest.mark.skip(reason="test dev")
 def test_person_join_rename():
     querystring = (
         "(\\rename_{A:*} Eats) \\join_{A.pizza = B.pizza} (\\rename_{B:*}"
@@ -472,7 +440,6 @@ def test_person_join_rename():
     assert len(computed) == 94
 
 
-@pytest.mark.skip(reason="test dev")
 def test_person_join_conjunction():
     querystring = (
         "(\\rename_{P:*} Person) \\join_{P.gender = Q.gender and P.age ="
@@ -480,3 +447,24 @@ def test_person_join_conjunction():
     )
     computed = _evaluate(querystring)
     assert len(computed) == 9
+
+
+def test_project_select_pizza_mushroom():
+    querystring = "\\project_{pizza} \\select_{pizza='mushroom'} Eats;"
+    computed = _evaluate(querystring)
+    assert len(computed) == 1
+
+
+def test_project_Person_gender():
+    querystring = "\\project_{gender} Person;"
+    result = ['{"Person.gender": "female"}', '{"Person.gender": "male"}']
+    _check(querystring, result)
+
+
+def test_project_person_join_eats():
+    querystring = (
+        "\\project_{Person.name, Eats.pizza} (Person \\join_{Person.name ="
+        " Eats.name} Eats);"
+    )
+    computed = _evaluate(querystring)
+    assert len(computed) == 20

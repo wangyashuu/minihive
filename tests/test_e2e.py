@@ -1,12 +1,13 @@
 import json
 import unittest
+import pytest
 
 import luigi
 import sqlparse
 
 import minihive.ra2mr as ra2mr
 import minihive.raopt as raopt
-import minihive.sql2ra as sqlra
+import minihive.sql2ra as sql2ra
 import test_ra2mr
 
 """

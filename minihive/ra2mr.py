@@ -34,7 +34,8 @@ def get_cond_target(relation, json, target):
     if isinstance(target, radb.ast.AttrRef):
         if target.rel is None or target.rel == relation:
             return json[f"{relation}.{target.name}"]
-
+        elif target.rel is not None and f"{target.rel}.{target.name}" in json:
+            return json[f"{target.rel}.{target.name}"]
     return None
 
 
@@ -212,12 +213,14 @@ class JoinTask(RelAlgQueryTask):
         condition = raquery.cond
 
         """ .................. fill in your code below ...................."""
+        conds = decomposite_conjunctive_cond(condition)
+        key = [
+            get_cond_target(relation, json_tuple, c.inputs[0])
+            or get_cond_target(relation, json_tuple, c.inputs[1])
+            for c in conds
+        ]
 
-        val = get_cond_target(
-            relation, json_tuple, condition.inputs[0]
-        ) or get_cond_target(relation, json_tuple, condition.inputs[1])
-
-        yield (val, json_tuple)
+        yield (json.dumps(key), json.dumps({relation: json_tuple}))
 
         """ .................. fill in your code above ...................."""
 
@@ -225,18 +228,22 @@ class JoinTask(RelAlgQueryTask):
         raquery = radb.parse.one_statement_from_string(self.querystring)
 
         """ ................. fill in your code below ..................."""
-        # diff_attr_tables = { for v in values for key, value in json.dumps(val)}
-        # common_attr = json.dumps(keys)
-        # for attrs in diff_attr_tables:
-        # if len(diff_attr_tables) == 2:
-        value_list = list(values)
-        if len(value_list) == 2:
-            obj = {
-                key: val
-                for v in value_list
-                for key, val in v.items()
-            }
-            yield ("foo", json.dumps(obj))
+
+        relations = dict()
+        for val_str in values:
+            val = json.loads(val_str)
+            rel, obj = next(iter(val.items()))
+            relations[rel] = relations.get(rel, []) + [obj]
+
+        if len(relations) == 2:
+            left, right = list(relations.values())
+            for left_t in left:
+                for right_t in right:
+                    obj = dict()
+                    obj.update(left_t)
+                    obj.update(right_t)
+                    yield ("foo", json.dumps(obj))
+                    # print("for debug")
 
         """ ................. fill in your code above ..................."""
 
@@ -316,15 +323,19 @@ class ProjectTask(RelAlgQueryTask):
         attrs = radb.parse.one_statement_from_string(self.querystring).attrs
 
         """ ...................... fill in your code below ........................"""
+        obj = dict()
+        for a in attrs:
+            key = f"{a.rel or relation}.{a.name}"
+            obj[key] = json_tuple[key]
 
-        yield ("foo", "bar")
+        yield (json.dumps(obj), json.dumps(obj))
 
         """ ...................... fill in your code above ........................"""
 
     def reducer(self, key, values):
         """...................... fill in your code below ........................"""
 
-        yield ("foo", "bar")
+        yield (key, next(values))
 
         """ ...................... fill in your code above ........................"""
 
