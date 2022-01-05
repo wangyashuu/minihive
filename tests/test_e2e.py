@@ -152,7 +152,7 @@ class End2EndUnitTests(unittest.TestCase):
         sqlstring = (
             "select distinct P1.name from Person P1, Eats Eats1, Person P2,"
             " Eats Eats2 where P1.name = Eats1.name and P2.name = Eats2.name"
-            " and P1.name = P2.name and P1.age = 16 "
+            " and P1.name = P2.name and P1.age = 16"
         )
         computed = self._evaluate(sqlstring)
         self.assertEqual(len(computed), 1)
