@@ -211,6 +211,18 @@ class TestRulePushDownSelections(unittest.TestCase):
             " (\\select_{Eats.pizza = 'mushroom'} Eats);",
         )
 
+    def test_multi_level_push_down(self):
+        self._check(
+            "\\select_{Person.name = Eats.name} (\\select_{P2.name ="
+            " Eats2.name} (\\select_{Person.name = P2.name} (((Person \\cross"
+            " Eats) \\cross (\\rename_{P2: *} Person)) \\cross"
+            " (\\rename_{Eats2: *} Eats))));",
+            "\\select_{P2.name = Eats2.name} ((\\select_{Person.name ="
+            " P2.name} ((\\select_{Person.name = Eats.name} (Person \\cross"
+            " Eats)) \\cross (\\rename_{P2: *} Person))) \\cross"
+            " (\\rename_{Eats2: *} Eats));",
+        )
+
 
 """
 Tests that nested selections are properly merged.
@@ -324,6 +336,17 @@ class TestIntroduceJoins(unittest.TestCase):
             " (Person \\cross Eats);",
             "Person \\join_{Person.name = Eats.name and Person.name ="
             " Eats.pizza} Eats;",
+        )
+
+    def test_multi_level_join(self):
+        self._check(
+            "\\select_{P2.name = Eats2.name} ((\\select_{Person.name ="
+            " P2.name} ((\\select_{Person.name = Eats.name} (Person \\cross"
+            " Eats)) \\cross (\\rename_{P2: *} Person))) \\cross"
+            " (\\rename_{Eats2: *} Eats));",
+            "((Person \\join_{Person.name = Eats.name} Eats)"
+            " \\join_{Person.name = P2.name} (\\rename_{P2: *} Person))"
+            " \\join_{P2.name = Eats2.name} (\\rename_{Eats2: *} Eats);",
         )
 
 
