@@ -55,6 +55,80 @@ def match_cond(relation, json, cond):
     return op(left, right)
 
 
+def is_map_only_job(task):
+    if (
+        isinstance(task, luigi.contrib.hadoop.JobTask)
+        and task.mapper is not NotImplemented
+        and task.reducer is NotImplemented
+    ):
+        return True
+
+    return False
+
+
+def get_rels(rel):
+    if type(rel) == radb.ast.RelRef:
+        return set([rel.rel])
+    rel_list = [get_rels(i) for i in rel.inputs]
+    if type(rel) == radb.ast.Rename:
+        rel_list = [{rel.relname}]
+    return set.union(*rel_list)
+
+
+def optimize_task(cls):
+    class Wrapper(cls):  # cls
+        def __init__(self, *args, **kwargs):
+            super().__init__(*args, **kwargs)
+            self.unwrap_requires = super().requires
+            self.unwrap_mapper = super().mapper
+
+            # chain fold
+            ## rule 1. cat previous map only jobs with mapper.
+            branches = dict()
+            if self.optimize:
+                queue = [] + self.unwrap_requires()
+                subtasks = []
+                while len(queue) > 0:
+                    task = queue.pop()
+                    if is_map_only_job(task):
+                        raquery = radb.parse.one_statement_from_string(
+                            task.querystring
+                        )
+                        rels = str(list(get_rels(raquery)))
+                        branches[rels] = [task] + branches.get(rels, [])
+                        queue += task.unwrap_requires()
+                    else:
+                        subtasks.append(task)
+            else:
+                subtasks = self.unwrap_requires()
+            self.branches = branches
+            self.subtasks = subtasks
+
+            ## rule 2. cat after map only jobs with reducer.
+
+            ## rule 3. reorder after filter to front. (DONE by pushing select)
+
+        def requires(self):
+            return self.subtasks
+
+        def mapper(self, line):
+            relation, tuple = line.split("\t")
+            branches = [v for k, v in self.branches.items() if relation in k]
+            if len(branches) > 0:
+                merged_subtasks = branches[0]
+                for t in merged_subtasks:
+                    subtask_result = next(t.unwrap_mapper(line), None)
+                    if subtask_result is None:
+                        return
+                    line = "\t".join(subtask_result)
+
+            result = next(super().mapper(line), None)
+            if result is not None:
+                yield result
+
+    return Wrapper
+
+
 """
 Control where the input data comes from, and where output data should go.
 """
@@ -139,6 +213,7 @@ class RelAlgQueryTask(luigi.contrib.hadoop.JobTask, OutputMixin):
     In HDFS, we call the folders for temporary data tmp1, tmp2, ...
     In the local or mock file system, we call the files tmp1.tmp...
     """
+    optimize = luigi.BoolParameter()
 
     def output(self):
         if self.exec_environment == ExecEnv.HDFS:
@@ -154,13 +229,15 @@ this produces a tree of luigi tasks with the physical query operators.
 """
 
 
-def task_factory(raquery, step=1, env=ExecEnv.HDFS):
-
+def task_factory(raquery, step=1, env=ExecEnv.HDFS, optimize=False):
     assert isinstance(raquery, radb.ast.Node)
 
     if isinstance(raquery, radb.ast.Select):
         return SelectTask(
-            querystring=str(raquery) + ";", step=step, exec_environment=env
+            querystring=str(raquery) + ";",
+            step=step,
+            exec_environment=env,
+            optimize=optimize,
         )
 
     elif isinstance(raquery, radb.ast.RelRef):
@@ -169,17 +246,26 @@ def task_factory(raquery, step=1, env=ExecEnv.HDFS):
 
     elif isinstance(raquery, radb.ast.Join):
         return JoinTask(
-            querystring=str(raquery) + ";", step=step, exec_environment=env
+            querystring=str(raquery) + ";",
+            step=step,
+            exec_environment=env,
+            optimize=optimize,
         )
 
     elif isinstance(raquery, radb.ast.Project):
         return ProjectTask(
-            querystring=str(raquery) + ";", step=step, exec_environment=env
+            querystring=str(raquery) + ";",
+            step=step,
+            exec_environment=env,
+            optimize=optimize,
         )
 
     elif isinstance(raquery, radb.ast.Rename):
         return RenameTask(
-            querystring=str(raquery) + ";", step=step, exec_environment=env
+            querystring=str(raquery) + ";",
+            step=step,
+            exec_environment=env,
+            optimize=optimize,
         )
 
     else:
@@ -189,18 +275,23 @@ def task_factory(raquery, step=1, env=ExecEnv.HDFS):
         )
 
 
+@optimize_task
 class JoinTask(RelAlgQueryTask):
     def requires(self):
         raquery = radb.parse.one_statement_from_string(self.querystring)
         assert isinstance(raquery, radb.ast.Join)
 
         task1 = task_factory(
-            raquery.inputs[0], step=self.step + 1, env=self.exec_environment
+            raquery.inputs[0],
+            step=self.step + 1,
+            env=self.exec_environment,
+            optimize=self.optimize,
         )
         task2 = task_factory(
             raquery.inputs[1],
             step=self.step + count_steps(raquery.inputs[0]) + 1,
             env=self.exec_environment,
+            optimize=self.optimize,
         )
 
         return [task1, task2]
@@ -248,6 +339,7 @@ class JoinTask(RelAlgQueryTask):
         """ ................. fill in your code above ..................."""
 
 
+@optimize_task
 class SelectTask(RelAlgQueryTask):
     def requires(self):
         raquery = radb.parse.one_statement_from_string(self.querystring)
@@ -258,6 +350,7 @@ class SelectTask(RelAlgQueryTask):
                 raquery.inputs[0],
                 step=self.step + 1,
                 env=self.exec_environment,
+                optimize=self.optimize,
             )
         ]
 
@@ -273,6 +366,7 @@ class SelectTask(RelAlgQueryTask):
         """ .................. fill in your code above ...................."""
 
 
+@optimize_task
 class RenameTask(RelAlgQueryTask):
     def requires(self):
         raquery = radb.parse.one_statement_from_string(self.querystring)
@@ -283,6 +377,7 @@ class RenameTask(RelAlgQueryTask):
                 raquery.inputs[0],
                 step=self.step + 1,
                 env=self.exec_environment,
+                optimize=self.optimize,
             )
         ]
 
@@ -303,6 +398,7 @@ class RenameTask(RelAlgQueryTask):
         """ .................. fill in your code above ...................."""
 
 
+@optimize_task
 class ProjectTask(RelAlgQueryTask):
     def requires(self):
         raquery = radb.parse.one_statement_from_string(self.querystring)
@@ -313,6 +409,7 @@ class ProjectTask(RelAlgQueryTask):
                 raquery.inputs[0],
                 step=self.step + 1,
                 env=self.exec_environment,
+                optimize=self.optimize,
             )
         ]
 
@@ -334,7 +431,7 @@ class ProjectTask(RelAlgQueryTask):
 
     def reducer(self, key, values):
         """...................... fill in your code below ........................"""
-
+        # TODO: replace key with relation name
         yield (key, next(values))
 
         """ ...................... fill in your code above ........................"""
