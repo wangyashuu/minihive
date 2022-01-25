@@ -100,17 +100,27 @@ def clear_local_tmpfiles():
 
 
 def eval(sf, env, query, dd, optimize):
+
     stmt = sqlparse.parse(query)[0]
 
     """ ...................... you may edit code below ........................"""
+    meta = dict(
+        PART=sf * 200000,
+        PARTSUPP=sf * 800000,
+        LINEITEM=sf * 6000000,
+        ORDERS=sf * 1500000,
+        SUPPLIER=sf * 10000,
+        CUSTOMER=sf * 150000,
+        NATION=25,
+        REGION=5,
+    )
 
     ra0 = sql2ra.translate(stmt)
 
     ra1 = raopt.rule_break_up_selections(ra0)
     ra2 = raopt.rule_push_down_selections(ra1, dd)
     ra3 = raopt.rule_merge_selections(ra2)
-    ra4 = raopt.rule_introduce_joins(ra3)
-
+    ra4 = raopt.rule_introduce_joins(ra3, optimize=optimize, meta=meta)
     task = ra2mr.task_factory(ra4, env=env, optimize=optimize)
 
     """ ...................... you may edit code above ........................"""

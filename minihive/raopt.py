@@ -52,7 +52,7 @@ def rule_merge_selections(rel):
     return traverse_until_select(operate_select, rel)
 
 
-def rule_introduce_joins(rel):
+def rule_introduce_joins(rel, optimize=False, meta=None):
     def operate_select(rel):
         target, cond = rel.inputs[0], rel.cond
         rels = get_rels(target)
@@ -78,7 +78,65 @@ def rule_introduce_joins(rel):
                 return Select(left_cond, target)
         return Select(cond, target)
 
-    return traverse_until_select(operate_select, rel)
+    joined = traverse_until_select(operate_select, rel)
+
+    if optimize and meta is not None:
+
+        def operate_rotate_join(raq):
+            rels = get_rels(raq)
+            if len(rels) <= 2:
+                return raq
+
+            conds = decomposite_conjunctive_cond(raq.cond)
+            left, right = raq.inputs[0], raq.inputs[1]
+            left_rels, right_rels = get_rels(left), get_rels(right)
+
+            alone_rels = None
+            if len(left_rels) == 1:
+                alone_rels = left_rels
+            elif len(right_rels) == 1:
+                alone_rels = right_rels
+
+            joined_input, alone_input = (
+                (right, left) if alone_rels == left_rels else (left, right)
+            )
+
+            max_rel = max(rels, key=lambda x: meta[x])
+            if (
+                alone_rels is None
+                or max_rel in alone_rels
+                or not isinstance(joined_input, Join)
+            ):
+                return raq
+
+            max_input = [
+                inp for inp in joined_input.inputs if max_rel in get_rels(inp)
+            ][0]
+            other_input = [
+                inp for inp in joined_input.inputs if inp is not max_input
+            ][0]
+
+            if any([max_rel in get_attr_rels(c) for c in conds]):
+                other_size = sum([meta[r] for r in get_rels(other_input)])
+                alone_size = sum([meta[r] for r in get_rels(alone_input)])
+                if other_size < alone_size:
+                    return raq
+                # alone <=> other
+                new_joined_input = Join(alone_input, raq.cond, max_input)
+                new_joined = Join(
+                    new_joined_input, joined_input.cond, other_input
+                )
+            else:
+                # alone <=> max
+                new_joined_input = Join(alone_input, raq.cond, other_input)
+                new_joined = Join(
+                    new_joined_input, joined_input.cond, max_input
+                )
+            return new_joined
+
+        joined = traverse_until_join(operate_rotate_join, joined)
+
+    return joined
 
 
 def traverse_until_select(operate_select, rel, *args):
@@ -107,6 +165,34 @@ def traverse_until_select(operate_select, rel, *args):
     elif t == Select:
         rel_input = traverse_until_select(*get_args(rel.inputs[0]))
         return operate_select(Select(rel.cond, rel_input))
+
+
+def traverse_until_join(operate, rel, *args):
+    def get_args(target):
+        return [operate, target] + list(args)
+
+    t = type(rel)
+    if t == Cross:
+        left, right = rel.inputs
+        left = traverse_until_join(*get_args(left))
+        right = traverse_until_join(*get_args(right))
+        return Cross(left, right)
+    elif t == Project:
+        target_rel = traverse_until_join(*get_args(rel.inputs[0]))
+        return Project(rel.attrs, target_rel)
+    elif t == Rename:
+        target_rel = traverse_until_join(*get_args(rel.inputs[0]))
+        return Rename(rel.relname, rel.attrnames, target_rel)
+    elif t == Join:
+        left, right = rel.inputs
+        left = traverse_until_join(*get_args(left))
+        right = traverse_until_join(*get_args(right))
+        return operate(Join(left, rel.cond, right))
+    elif t == RelRef:
+        return rel
+    elif t == Select:
+        rel_input = traverse_until_join(*get_args(rel.inputs[0]))
+        return Select(rel.cond, rel_input)
 
 
 def push_down_selections(rel, cond, schema):
